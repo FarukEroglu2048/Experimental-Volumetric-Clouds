@@ -1,5 +1,7 @@
 #include <dataref_helpers.hpp>
-
+std::unordered_map<std::string, std::vector<float>*> vector_float_dataRefs;
+std::unordered_map<std::string, float*> float_dataRefs;
+#define MSG_ADD_DATAREF 0x01000000           //  Add dataref to DRE message
 float read_float_callback(void* data_pointer)
 {
 	return *static_cast<float*>(data_pointer);
@@ -45,13 +47,36 @@ void write_float_vector_callback(void* data_pointer, float* input_values, int wr
 XPLMDataRef export_float_dataref(char* dataref_name, float initial_value)
 {
 	float* float_pointer = new float(initial_value);
-
+	float_dataRefs[std::string(dataref_name)]=float_pointer;
 	return XPLMRegisterDataAccessor(dataref_name, xplmType_Float, 1, nullptr, nullptr, read_float_callback, write_float_callback, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, float_pointer, float_pointer);
 }
 
 XPLMDataRef export_float_vector_dataref(char* dataref_name, std::vector<float> initial_values)
 {
 	std::vector<float>* vector_pointer = new std::vector<float>(initial_values);
-	
+	vector_float_dataRefs[std::string(dataref_name)]=vector_pointer;
 	return XPLMRegisterDataAccessor(dataref_name, xplmType_FloatArray, 1, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, read_float_vector_callback, write_float_vector_callback, nullptr, nullptr, vector_pointer, vector_pointer);
+}
+
+void notify_datarefs()
+{
+	for (auto x : vector_float_dataRefs) {
+        std::string name=x.first;
+		XPLMSendMessageToPlugin(XPLM_NO_PLUGIN_ID , MSG_ADD_DATAREF, (void*)name.c_str());  //tell dref editor about it
+	}
+	for (auto x : float_dataRefs) {
+        std::string name=x.first;
+		XPLMSendMessageToPlugin(XPLM_NO_PLUGIN_ID , MSG_ADD_DATAREF, (void*)name.c_str());  //tell dref editor about it
+	}
+}
+void clean_datarefs(){
+	for (auto x : vector_float_dataRefs) {
+        std::vector<float>* vector_pointer=x.second;
+		delete vector_pointer;
+
+	}
+	for (auto x : float_dataRefs) {
+        float* float_pointer =x.second;
+		delete  float_pointer;
+	}
 }

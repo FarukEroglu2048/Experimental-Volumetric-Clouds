@@ -516,7 +516,7 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 
 PLUGIN_API void XPluginStop(void)
 {
-
+	clean_datarefs();
 }
 
 PLUGIN_API int XPluginEnable(void)
@@ -531,5 +531,7 @@ PLUGIN_API void XPluginDisable(void)
 
 PLUGIN_API void XPluginReceiveMessage(XPLMPluginID sender_plugin, int message_type, void* callback_parameters)
 {
-
+	if (message_type == XPLM_MSG_PLANE_LOADED){
+		notify_datarefs();
+	}
 }
