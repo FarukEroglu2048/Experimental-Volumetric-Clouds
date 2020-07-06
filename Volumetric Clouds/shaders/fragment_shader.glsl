@@ -8,6 +8,7 @@
 
 #define MAXIMUM_SAMPLE_STEP_SIZE 100.0
 
+#define WIND_LAYER_COUNT 3
 #define CLOUD_LAYER_COUNT 3
 #define CLOUD_TYPE_COUNT 5
 
@@ -46,6 +47,7 @@ uniform float[CLOUD_TYPE_COUNT] cloud_heights;
 uniform int[CLOUD_LAYER_COUNT] cloud_types;
 uniform float[CLOUD_TYPE_COUNT] cloud_coverages;
 
+uniform vec3[CLOUD_LAYER_COUNT] windspeeds;
 uniform vec3[CLOUD_TYPE_COUNT] base_noise_ratios;
 uniform vec3[CLOUD_TYPE_COUNT] detail_noise_ratios;
 
@@ -94,8 +96,8 @@ float get_height_ratio(in vec3 ray_position, in int layer_index)
 
 float sample_clouds(in vec3 ray_position, in int layer_index)
 {
-	vec3 wind_offset = vec3(1.0, 0.25, 1.0) * local_time;
-
+	//vec3 wind_offset = vec3(1.0, 0.25, 1.0) * local_time;
+	vec3 wind_offset = windspeeds[layer_index] * local_time;
 	vec4 base_noise_sample = texture(base_noise_texture, (ray_position + wind_offset) * base_noise_scale);
 	float base_noise = map(base_noise_sample.x, dot(base_noise_sample.yzw, base_noise_ratios[cloud_types[layer_index] - 1]), 1.0, 0.0, 1.0);
 
@@ -228,8 +230,8 @@ vec4 ray_march(in int layer_index, in vec4 input_color)
 					if (output_color.w < 0.01) break;
 				}
 
-				float current_step_size = sample_step_size * map(texture(blue_noise_texture, sample_ray_position.xz * blue_noise_scale).x, 0.0, 1.0, 0.75, 1.0) * map(sample_ray_distance, 0.0, ray_march_distance, 1.0, 4.0);
-
+				
+				float current_step_size = sample_step_size * map(sample_ray_distance, 0.0, ray_march_distance, 1.0, 2.5);
 				sample_ray_position += sample_ray_direction * current_step_size;
 				sample_ray_distance += current_step_size;
 			}

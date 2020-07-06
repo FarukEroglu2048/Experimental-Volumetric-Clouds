@@ -4,6 +4,7 @@
 #include <XPLMPlugin.h>
 #include <vector>
 #include <unordered_map>
+#include <string>
 XPLMDataRef export_float_dataref(char* dataref_name, float initial_value);
 XPLMDataRef export_float_vector_dataref(char* dataref_name, std::vector<float> initial_values);
 void notify_datarefs();

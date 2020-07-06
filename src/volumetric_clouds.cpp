@@ -15,7 +15,7 @@
 #include <cmath>
 
 #define INFORMATION_BUFFER_SIZE 256
-
+#define WIND_LAYER_COUNT 3
 #define CLOUD_LAYER_COUNT 3
 #define CLOUD_TYPE_COUNT 5
 
@@ -34,6 +34,10 @@ XPLMDataRef base_noise_scale_dataref;
 XPLMDataRef detail_noise_scale_dataref;
 
 XPLMDataRef blue_noise_scale_dataref;
+
+XPLMDataRef wind_alt_datarefs[WIND_LAYER_COUNT];
+XPLMDataRef windspeed_datarefs[WIND_LAYER_COUNT];
+XPLMDataRef winddirection_datarefs[WIND_LAYER_COUNT];
 
 XPLMDataRef cloud_base_datarefs[CLOUD_LAYER_COUNT];
 XPLMDataRef cloud_height_datarefs[CLOUD_TYPE_COUNT];
@@ -69,7 +73,7 @@ XPLMDataRef forward_mie_scattering_dataref;
 XPLMDataRef backward_mie_scattering_dataref;
 
 XPLMDataRef local_time_dataref;
-
+float start_time;
 GLfloat quad_vertices[] =
 {
 	-1.0, -1.0,
@@ -109,7 +113,7 @@ GLint shader_base_noise_scale;
 GLint shader_detail_noise_scale;
 
 GLint shader_blue_noise_scale;
-
+GLint shader_windspeeds;
 GLint shader_cloud_bases;
 GLint shader_cloud_heights;
 
@@ -147,7 +151,24 @@ BOOL APIENTRY DllMain(IN HINSTANCE dll_handle, IN DWORD call_reason, IN LPVOID r
 	return TRUE;
 }
 #endif
-
+float windspeeds[WIND_LAYER_COUNT];
+float windDir[WIND_LAYER_COUNT];
+float windAlt[WIND_LAYER_COUNT];
+float getWindSpeed(float altitude){
+	for(int i=0;i<WIND_LAYER_COUNT-1;i++){
+		if(windAlt[i+1]>altitude){
+			return windspeeds[i];
+		}
+	}
+	return windspeeds[WIND_LAYER_COUNT-1];
+}
+float getWindDir(float altitude){
+	for(int i=0;i<WIND_LAYER_COUNT-1;i++){
+		if(windAlt[i+1]>altitude)
+			return windDir[i];
+	}
+	return windDir[WIND_LAYER_COUNT-1];
+}
 int draw_callback(XPLMDrawingPhase drawing_phase, int is_before, void* callback_reference)
 {
 	if (is_before == 0)
@@ -231,8 +252,26 @@ int draw_callback(XPLMDrawingPhase drawing_phase, int is_before, void* callback_
 
 		int cloud_types[CLOUD_LAYER_COUNT];
 		float cloud_coverages[CLOUD_TYPE_COUNT];
+		float layer_windspeeds[WIND_LAYER_COUNT][3];
+		
+		for(int i=0;i<WIND_LAYER_COUNT;i++){
+			windspeeds[i]=XPLMGetDataf(windspeed_datarefs[i]);
+			windDir[i]=XPLMGetDataf(winddirection_datarefs[i]);
+			windAlt[i]=XPLMGetDataf(wind_alt_datarefs[i]);
+		}
+		for (size_t layer_index = 0; layer_index < CLOUD_LAYER_COUNT; layer_index++)
+		{ 
+			float speed=getWindSpeed(cloud_bases[layer_index]);
+			float dir=getWindDir(cloud_bases[layer_index]);
+			cloud_types[layer_index] = XPLMGetDatai(cloud_type_datarefs[layer_index]);
+			layer_windspeeds[layer_index][0]=speed*sin(RADIANS_PER_DEGREES*dir);
+			layer_windspeeds[layer_index][1]=speed*0.25f;
+			layer_windspeeds[layer_index][2]=speed*-cos(RADIANS_PER_DEGREES*dir);
+			//printf("%d %f %f %f (%f %f)\n",layer_index,layer_windspeeds[layer_index][0],layer_windspeeds[layer_index][1],layer_windspeeds[layer_index][2],dir);
+			
+		}
 
-		for (size_t layer_index = 0; layer_index < CLOUD_LAYER_COUNT; layer_index++) cloud_types[layer_index] = XPLMGetDatai(cloud_type_datarefs[layer_index]);
+		glUniform3fv(shader_windspeeds, CLOUD_LAYER_COUNT, reinterpret_cast<GLfloat*>(layer_windspeeds));
 		for (size_t type_index = 0; type_index < CLOUD_TYPE_COUNT; type_index++) cloud_coverages[type_index] = XPLMGetDataf(cloud_coverage_datarefs[type_index]);
 
 		glUniform1iv(shader_cloud_types, CLOUD_LAYER_COUNT, cloud_types);
@@ -284,8 +323,8 @@ int draw_callback(XPLMDrawingPhase drawing_phase, int is_before, void* callback_
 
 		glUniform1f(shader_forward_mie_scattering, XPLMGetDataf(forward_mie_scattering_dataref));
 		glUniform1f(shader_backward_mie_scattering, XPLMGetDataf(backward_mie_scattering_dataref));
-
-		glUniform1f(shader_local_time, XPLMGetDataf(local_time_dataref));
+		float time=XPLMGetDataf(local_time_dataref)-start_time;
+		glUniform1f(shader_local_time,time );
 
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -327,6 +366,15 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 	detail_noise_scale_dataref = export_float_dataref("volumetric_clouds/detail_noise_scale", 0.0005);
 
 	blue_noise_scale_dataref = export_float_dataref("volumetric_clouds/blue_noise_scale", 0.01);
+	wind_alt_datarefs[0]= XPLMFindDataRef("sim/weather/wind_altitude_msl_m[0]");
+	wind_alt_datarefs[1]= XPLMFindDataRef("sim/weather/wind_altitude_msl_m[1]");
+	wind_alt_datarefs[2]= XPLMFindDataRef("sim/weather/wind_altitude_msl_m[2]");
+	windspeed_datarefs[0]= XPLMFindDataRef("sim/weather/wind_speed_kt[0]");
+	windspeed_datarefs[1]= XPLMFindDataRef("sim/weather/wind_speed_kt[1]");
+	windspeed_datarefs[2]= XPLMFindDataRef("sim/weather/wind_speed_kt[2]");
+	winddirection_datarefs[0]= XPLMFindDataRef("sim/weather/wind_direction_degt[0]");
+	winddirection_datarefs[1]= XPLMFindDataRef("sim/weather/wind_direction_degt[1]");
+	winddirection_datarefs[2]= XPLMFindDataRef("sim/weather/wind_direction_degt[2]");
 
 	cloud_base_datarefs[0] = XPLMFindDataRef("sim/weather/cloud_base_msl_m[0]");
 	cloud_base_datarefs[1] = XPLMFindDataRef("sim/weather/cloud_base_msl_m[1]");
@@ -377,7 +425,7 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 	sun_tint_green_dataref = XPLMFindDataRef("sim/graphics/misc/outside_light_level_g");
 	sun_tint_blue_dataref = XPLMFindDataRef("sim/graphics/misc/outside_light_level_b");
 
-	sun_gain_dataref = export_float_dataref("volumetric_clouds/sun_gain", 3.0);
+	sun_gain_dataref = export_float_dataref("volumetric_clouds/sun_gain", 2.25);
 
 	atmosphere_tint_dataref = export_float_vector_dataref("volumetric_clouds/atmosphere_tint", {0.35, 0.575, 1.0});
 	atmospheric_blending_dataref = export_float_dataref("volumetric_clouds/atmospheric_blending", 0.15);
@@ -386,7 +434,7 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 	backward_mie_scattering_dataref = export_float_dataref("volumetric_clouds/backward_mie_scattering", 0.25);
 
 	local_time_dataref = XPLMFindDataRef("sim/time/local_time_sec");
-
+	start_time=XPLMGetDataf(local_time_dataref);
 	XPLMDataRef override_clouds_dataref = XPLMFindDataRef("sim/operation/override/override_clouds");
 	XPLMSetDatai(override_clouds_dataref, 1);
 
@@ -463,6 +511,7 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 
 	shader_blue_noise_scale = glGetUniformLocation(shader_program, "blue_noise_scale");
 
+	shader_windspeeds = glGetUniformLocation(shader_program, "windspeeds");
 	shader_cloud_bases = glGetUniformLocation(shader_program, "cloud_bases");
 	shader_cloud_heights = glGetUniformLocation(shader_program, "cloud_heights");
 
