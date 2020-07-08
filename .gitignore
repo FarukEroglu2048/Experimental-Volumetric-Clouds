@@ -4,5 +4,5 @@
 deploy/*
 SDK/*
 make.sh
-
-
+build
+*.xpl
