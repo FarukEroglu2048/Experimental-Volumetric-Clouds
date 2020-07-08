@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 set(XPLM_SDK_INCLUDE_DIRECTORY "SDK/CHeaders/XPLM" CACHE PATH "X-Plane SDK include directory")
 set(XPLM_SDK_LIBRARY_FILE "" CACHE FILEPATH "X-Plane SDK library file (leave empty on Linux)")
-set(OpenGL_GL_PREFERENCE "GLVND")
+
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(ZLIB REQUIRED)
