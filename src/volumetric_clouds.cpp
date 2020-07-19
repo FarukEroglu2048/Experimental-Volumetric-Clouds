@@ -6,8 +6,6 @@
 #include <XPLMDisplay.h>
 #include <XPLMGraphics.h>
 
-#include <GL/glew.h>
-
 #include <dataref_helpers.hpp>
 #include <opengl_helpers.hpp>
 
@@ -438,7 +436,9 @@ PLUGIN_API int XPluginStart(char* plugin_name, char* plugin_signature, char* plu
 	XPLMDataRef override_clouds_dataref = XPLMFindDataRef("sim/operation/override/override_clouds");
 	XPLMSetDatai(override_clouds_dataref, 1);
 
+	#ifndef APL
 	glewInit();
+	#endif
 
 	XPLMSetGraphicsState(0, 1, 0, 0, 0, 0, 0);
 

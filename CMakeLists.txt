@@ -17,8 +17,8 @@ option(VOLUMETRIC_PRE_1050 "Builds Volumetric Clouds for pre-10.50 X-Plane versi
 
 add_library(volumetric_clouds SHARED "include/dataref_helpers.hpp" "include/opengl_helpers.hpp" "src/dataref_helpers.cpp" "src/opengl_helpers.cpp" "src/volumetric_clouds.cpp")
 
-target_include_directories(volumetric_clouds PRIVATE "include" ${XPLM_SDK_INCLUDE_DIRECTORY} ${GLEW_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
-target_link_libraries(volumetric_clouds PRIVATE ${XPLM_SDK_LIBRARY_FILE} OpenGL::GL ${GLEW_LIBRARIES} ${ZLIB_LIBRARIES} ${PNG_LIBRARIES})
+target_include_directories(volumetric_clouds PRIVATE "include" ${XPLM_SDK_INCLUDE_DIRECTORY} GLEW::glew ${ZLIB_INCLUDE_DIRS} ${PNG_INCLUDE_DIRS})
+target_link_libraries(volumetric_clouds PRIVATE ${XPLM_SDK_LIBRARY_FILE} OpenGL::GL GLEW::glew ${ZLIB_LIBRARIES} ${PNG_LIBRARIES})
 
 target_compile_definitions(volumetric_clouds PRIVATE "XPLM200=1" "XPLM210=1" "XPLM300=1" "XPLM301=1" "XPLM302=1" "XPLM_DEPRECATED=1")
 if(NOT VOLUMETRIC_PRE_1050)
@@ -51,5 +51,5 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set_target_properties(volumetric_clouds PROPERTIES OUTPUT_NAME "mac")
 
 	install(DIRECTORY "Volumetric Clouds" DESTINATION ${CMAKE_INSTALL_PREFIX})
-	install(TARGETS volumetric_clouds FRAMEWORK DESTINATION "${CMAKE_INSTALL_PREFIX}/Volumetric Clouds")
+	install(TARGETS volumetric_clouds LIBRARY DESTINATION "${CMAKE_INSTALL_PREFIX}/Volumetric Clouds")
 endif()

@@ -1,6 +1,12 @@
 #pragma once
 
+#ifdef APL
+#include <OpenGL/gl.h>
+#define glBindVertexArray glBindVertexArrayAPPLE
+#define glGenVertexArrays glGenVertexArraysAPPLE
+#else
 #include <GL/glew.h>
+#endif
 
 #define SHADER_INVALID 0
 #define TEXTURE_INVALID 0
